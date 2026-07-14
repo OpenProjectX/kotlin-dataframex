@@ -1,0 +1,32 @@
+# Version catalog is a central place for you to declare and version dependencies
+# https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
+# https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
+
+[versions]
+kotlin = "2.3.21"
+kotlinxDatetime = "0.7.1"
+kotlinxSerializationJSON = "1.9.0"
+kotlinxCoroutines = "1.10.2"
+dataframe = "1.0.0-Beta5"
+testcontainers = "1.21.4"
+kandy = "0.8.4"
+junit = "5.13.4"
+
+[libraries]
+kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
+kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
+kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+dataframe = { module = "org.jetbrains.kotlinx:dataframe", version.ref = "dataframe" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainersJunit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+kandyLetsPlot = { module = "org.jetbrains.kotlinx:kandy-lets-plot", version.ref = "kandy" }
+junitJupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+
+# Libraries can be bundled together for easier import
+[bundles]
+kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines"]
+
+[plugins]
+kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
