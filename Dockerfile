@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG MAVEN_IMAGE=maven:3.9.16-eclipse-temurin-17
+ARG MAVEN_IMAGE=ghcr.io/openprojectx/dockerhub/library/maven:3.9.16-eclipse-temurin-17
 
 # Publish this checkout to Maven Local first. This makes the dependency bundle
 # self-contained even when the requested DataFrameX version is not on Maven Central yet.
@@ -42,11 +42,13 @@ RUN mvn --batch-mode --no-transfer-progress \
     && test -f "/workspace/dependencies/example-${PROJECT_VERSION}.jar" \
     && test -f "/workspace/dependencies/dataframe-1.0.0-Beta5.jar" \
     && test -f "/workspace/dependencies/kandy-lets-plot-0.8.4.jar" \
-    && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.21.jar"
+    && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.21.jar" \
+    && test -f "/workspace/dependencies/gradle-kotlin-dsl-plugins-6.6.4.jar" \
+    && test -f "/root/.m2/repository/org/gradle/kotlin/kotlin-dsl/org.gradle.kotlin.kotlin-dsl.gradle.plugin/6.6.4/org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.6.4.pom"
 
 # This is a data image. Create a stopped container and use `docker cp` to extract
 # either the canonical Maven repository or the convenient flat runtime jar directory.
-FROM alpine:3.23
+FROM ghcr.io/openprojectx/dockerhub/library/alpine:3.23
 
 ARG PROJECT_VERSION=0.1.0-SNAPSHOT
 LABEL org.opencontainers.image.title="Kotlin DataFrameX dependency cache" \

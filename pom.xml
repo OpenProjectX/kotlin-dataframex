@@ -16,6 +16,8 @@
     <properties>
         <dataframex.version>0.1.0-SNAPSHOT</dataframex.version>
         <kotlin.version>2.3.21</kotlin.version>
+        <!-- This is the version embedded by the Gradle 9.6.1 wrapper. -->
+        <kotlin-dsl.version>6.6.4</kotlin-dsl.version>
         <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -27,6 +29,14 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <repositories>
+        <repository>
+            <id>gradle-plugin-portal</id>
+            <name>Gradle Plugin Portal</name>
+            <url>https://plugins.gradle.org/m2/</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <!-- Keep both coordinates explicit so the dependency image always contains every
@@ -50,6 +60,22 @@
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-gradle-plugin</artifactId>
             <version>${kotlin.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Cache the marker POM used by Gradle's plugins DSL. -->
+        <dependency>
+            <groupId>org.gradle.kotlin.kotlin-dsl</groupId>
+            <artifactId>org.gradle.kotlin.kotlin-dsl.gradle.plugin</artifactId>
+            <version>${kotlin-dsl.version}</version>
+            <type>pom</type>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Keep the implementation explicit so Maven always traverses and downloads its
+             complete dependency graph, independently of marker-POM handling. -->
+        <dependency>
+            <groupId>org.gradle.kotlin</groupId>
+            <artifactId>gradle-kotlin-dsl-plugins</artifactId>
+            <version>${kotlin-dsl.version}</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>
