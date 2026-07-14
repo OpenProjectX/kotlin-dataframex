@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      gradle_args:
+        description: "Extra arguments passed to the Gradle release task"
+        required: false
+        default: ""
+        type: string
+      gradle_log_level:
+        description: "Gradle log level"
+        required: false
+        default: info
+        type: choice
+        options:
+          - quiet
+          - warn
+          - lifecycle
+          - info
+          - debug
+      skip_tests:
+        description: "Skip unit and Testcontainers tests"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/openprojectx/kotlin-dataframex
+
+jobs:
+  release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        !contains(github.event.head_commit.message, '[Gradle Release Plugin]') &&
+        !contains(github.event.head_commit.message, '[skip ci]') &&
+        !contains(github.event.head_commit.message, '[ci skip]') &&
+        !contains(github.event.head_commit.message, '[no ci]')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      GRADLE_OPTS: >-
+        -Dorg.gradle.daemon=false
+        -Dorg.gradle.internal.http.connectionTimeout=120000
+        -Dorg.gradle.internal.http.socketTimeout=300000
+      EXTRA_GRADLE_ARGS: ${{ github.event.inputs.gradle_args || '' }}
+      GRADLE_LOG_LEVEL: ${{ github.event.inputs.gradle_log_level || 'info' }}
+      SKIP_TESTS: ${{ github.event.inputs.skip_tests || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run tests
+        if: env.SKIP_TESTS != 'true'
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          docker version
+          ./gradlew --no-configuration-cache test --stacktrace "--$GRADLE_LOG_LEVEL"
+
+      - name: Write signing key
+        env:
+          SIGNING_KEY_ASC: ${{ secrets.SIGNING_KEY_ASC }}
+        run: |
+          test -n "$SIGNING_KEY_ASC"
+          printf '%s' "$SIGNING_KEY_ASC" > "$RUNNER_TEMP/signing-key.asc"
+
+      - name: Capture release version
+        run: |
+          release_version="$(awk -F= '/^[[:space:]]*version[[:space:]]*=/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit}' gradle.properties)"
+          test -n "$release_version"
+          echo "RELEASE_VERSION=${release_version%-SNAPSHOT}" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_KEY_FILE: ${{ runner.temp }}/signing-key.asc
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-configuration-cache release -x test \
+            --stacktrace "--$GRADLE_LOG_LEVEL" $EXTRA_GRADLE_ARGS
+
+      - name: Check out released source for dependency image
+        run: |
+          release_tag="kotlin-dataframex-${RELEASE_VERSION}"
+          git checkout --detach "$release_tag"
+          echo "RELEASE_REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish dependency image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            PROJECT_VERSION=${{ env.RELEASE_VERSION }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_REVISION }}
+            org.opencontainers.image.version=${{ env.RELEASE_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Write release summary
+        run: |
+          {
+            echo "## Kotlin DataFrameX ${RELEASE_VERSION}"
+            echo
+            echo "- Maven: \`org.openprojectx.kotlin.dataframex:core:${RELEASE_VERSION}\`"
+            echo "- Dependency image: \`${IMAGE_NAME}:${RELEASE_VERSION}\`"
+            echo "- Maven repository in image: \`/m2/repository\`"
+            echo "- Flat runtime jars in image: \`/dependencies\`"
+          } >> "$GITHUB_STEP_SUMMARY"

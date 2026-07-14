@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.openprojectx.kotlin.dataframex</groupId>
+    <artifactId>dataframex-dependency-bundle</artifactId>
+    <version>1</version>
+    <packaging>pom</packaging>
+
+    <name>Kotlin DataFrameX dependency bundle</name>
+    <description>Resolves the standalone example and locally published Kotlin DataFrameX artifacts.</description>
+    <url>https://github.com/OpenProjectX/kotlin-dataframex</url>
+
+    <properties>
+        <dataframex.version>0.1.0-SNAPSHOT</dataframex.version>
+        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <dependencies>
+        <!-- Keep both coordinates explicit so the dependency image always contains every
+             locally published project artifact. The example also resolves DataFrame, Kandy,
+             Lets-Plot, and its other runtime dependencies transitively. -->
+        <dependency>
+            <groupId>org.openprojectx.kotlin.dataframex</groupId>
+            <artifactId>core</artifactId>
+            <version>${dataframex.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openprojectx.kotlin.dataframex</groupId>
+            <artifactId>example</artifactId>
+            <version>${dataframex.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${maven-dependency-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

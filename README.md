@@ -50,3 +50,39 @@ Start Crux Console and seed documents with `:ticker/name` and `:ticker/price`, t
 
 The example reads a DataFrame from Crux, filters and adds a calculated column, writes CSV and
 HTML, and exports a Kandy bar chart as standalone HTML.
+
+## Dependency image
+
+The release workflow publishes `ghcr.io/openprojectx/kotlin-dataframex:<version>`. This is a
+data image containing both locally published project artifacts and all runtime dependencies of
+the example:
+
+- `/m2/repository` — a canonical Maven local repository with jars, POMs, and metadata.
+- `/dependencies` — a flat directory of runtime jars for simple classpath use.
+
+Extract either directory without running the image:
+
+```shell
+image=ghcr.io/openprojectx/kotlin-dataframex:latest
+container=$(docker create "$image")
+docker cp "$container:/m2/repository" ./m2-repository
+docker cp "$container:/dependencies" ./dependencies
+docker rm "$container"
+```
+
+To build it locally for the current snapshot version:
+
+```shell
+version=$(awk -F= '/^version/{gsub(/[[:space:]]/, "", $2); print $2}' gradle.properties)
+docker build \
+  --build-arg PROJECT_VERSION="$version" \
+  -t kotlin-dataframex-dependencies .
+```
+
+The root `pom.xml` is the dependency manifest used by the image. Override its
+`dataframex.version` property when resolving a different local publication:
+
+```shell
+./gradlew publishToMavenLocal -x test
+mvn -Ddataframex.version=0.1.0-SNAPSHOT dependency:go-offline
+```
