@@ -42,9 +42,9 @@ RUN mvn --batch-mode --no-transfer-progress \
     && test -f "/workspace/dependencies/example-${PROJECT_VERSION}.jar" \
     && test -f "/workspace/dependencies/dataframe-1.0.0-Beta5.jar" \
     && test -f "/workspace/dependencies/kandy-lets-plot-0.8.4.jar" \
-    && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.21.jar" \
-    && test -f "/workspace/dependencies/gradle-kotlin-dsl-plugins-6.6.4.jar" \
-    && test -f "/root/.m2/repository/org/gradle/kotlin/kotlin-dsl/org.gradle.kotlin.kotlin-dsl.gradle.plugin/6.6.4/org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.6.4.pom"
+    && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.20.jar" \
+    && test -f "/workspace/dependencies/gradle-kotlin-dsl-plugins-6.5.7.jar" \
+    && test -f "/root/.m2/repository/org/gradle/kotlin/kotlin-dsl/org.gradle.kotlin.kotlin-dsl.gradle.plugin/6.5.7/org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.5.7.pom"
 
 # This is a data image. Create a stopped container and use `docker cp` to extract
 # either the canonical Maven repository or the convenient flat runtime jar directory.

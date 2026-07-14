@@ -15,9 +15,9 @@
 
     <properties>
         <dataframex.version>0.1.0-SNAPSHOT</dataframex.version>
-        <kotlin.version>2.3.21</kotlin.version>
-        <!-- This is the version embedded by the Gradle 9.6.1 wrapper. -->
-        <kotlin-dsl.version>6.6.4</kotlin-dsl.version>
+        <kotlin.version>2.3.20</kotlin.version>
+        <!-- This is the version embedded by the Gradle 9.5.0 wrapper. -->
+        <kotlin-dsl.version>6.5.7</kotlin-dsl.version>
         <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
