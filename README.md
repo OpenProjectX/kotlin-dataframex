@@ -55,7 +55,8 @@ HTML, and exports a Kandy bar chart as standalone HTML.
 
 The release workflow publishes `ghcr.io/openprojectx/kotlin-dataframex:<version>`. This is a
 data image containing both locally published project artifacts and all runtime dependencies of
-the example:
+the example. It also contains `org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21`, matching this
+project's version catalog, together with the plugin's transitive compiler and tooling dependencies:
 
 - `/m2/repository` — a canonical Maven local repository with jars, POMs, and metadata.
 - `/dependencies` — a flat directory of runtime jars for simple classpath use.

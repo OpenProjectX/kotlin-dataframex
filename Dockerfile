@@ -41,7 +41,8 @@ RUN mvn --batch-mode --no-transfer-progress \
     && test -f "/workspace/dependencies/core-${PROJECT_VERSION}.jar" \
     && test -f "/workspace/dependencies/example-${PROJECT_VERSION}.jar" \
     && test -f "/workspace/dependencies/dataframe-1.0.0-Beta5.jar" \
-    && test -f "/workspace/dependencies/kandy-lets-plot-0.8.4.jar"
+    && test -f "/workspace/dependencies/kandy-lets-plot-0.8.4.jar" \
+    && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.21.jar"
 
 # This is a data image. Create a stopped container and use `docker cp` to extract
 # either the canonical Maven repository or the convenient flat runtime jar directory.

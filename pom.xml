@@ -15,6 +15,7 @@
 
     <properties>
         <dataframex.version>0.1.0-SNAPSHOT</dataframex.version>
+        <kotlin.version>2.3.21</kotlin.version>
         <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -41,6 +42,14 @@
             <groupId>org.openprojectx.kotlin.dataframex</groupId>
             <artifactId>example</artifactId>
             <version>${dataframex.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Keep the Gradle plugin and its compiler/tooling dependencies available to
+             consumers that use the exported Maven repository without network access. -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-gradle-plugin</artifactId>
+            <version>${kotlin.version}</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>
