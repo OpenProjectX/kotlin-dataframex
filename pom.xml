@@ -62,6 +62,22 @@
             <version>${kotlin.version}</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Cache Kotlin plugin markers as well as the implementation. They are separate
+             coordinates used by Gradle's plugins DSL. -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin.jvm</groupId>
+            <artifactId>org.jetbrains.kotlin.jvm.gradle.plugin</artifactId>
+            <version>${kotlin.version}</version>
+            <type>pom</type>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin.plugin.serialization</groupId>
+            <artifactId>org.jetbrains.kotlin.plugin.serialization.gradle.plugin</artifactId>
+            <version>${kotlin.version}</version>
+            <type>pom</type>
+            <scope>runtime</scope>
+        </dependency>
         <!-- Cache the marker POM used by Gradle's plugins DSL. -->
         <dependency>
             <groupId>org.gradle.kotlin.kotlin-dsl</groupId>

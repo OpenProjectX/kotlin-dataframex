@@ -11,6 +11,9 @@ pluginManagement {
             maven(url = "https://maven.aliyun.com/repository/gradle-plugin")
         }
 
+        // Plugin implementation artifacts are commonly published to Maven Central even when
+        // their marker POM is hosted by the Plugin Portal.
+        mavenCentral()
         gradlePluginPortal()
         maven(url = "https://repo.spring.io/plugins-release")
     }
@@ -50,6 +53,7 @@ val buildFiles = fileTree(rootDir) {
         ".*",
         "out"
     )
+    exclude("docker/offline-smoke-test/**")
     exclude("**/grails3")
     if (!excludes.isNullOrEmpty()) {
         exclude(excludes)

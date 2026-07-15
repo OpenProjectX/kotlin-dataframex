@@ -61,8 +61,8 @@ The Gradle `kotlin-dsl` marker and `org.gradle.kotlin:gradle-kotlin-dsl-plugins:
 with their transitive dependencies; `6.6.4` is the version embedded by this project's Gradle
 9.6.1 wrapper:
 
-- `/m2/repository` — a canonical Maven local repository with jars, POMs, Maven metadata, and
-  Gradle `.module` metadata synchronized from the resolved Gradle cache.
+- `/m2/repository` — a canonical Maven local repository with jars, POMs, Maven metadata, Gradle
+  `.module` metadata, and every resolved Kotlin Gradle Plugin compatibility JAR.
 - `/dependencies` — a flat directory of runtime jars for simple classpath use.
 
 Extract either directory without running the image:
@@ -91,6 +91,36 @@ The root `pom.xml` is the dependency manifest used by the image. Override its
 ./gradlew publishToMavenLocal -x test
 mvn -Ddataframex.version=0.1.0-SNAPSHOT dependency:go-offline
 ```
+
+The image uses the `:example:exportDependencyRepository` Gradle task to resolve the runtime graph,
+all Kotlin Gradle Plugin variants published for Gradle 8.0 through 8.13, and the Kotlin DSL plugin.
+The task exports the complete resolved Gradle cache entries into Maven layout, including classifier
+JARs referenced by `.module` metadata.
+
+To use the extracted repository without Maven Central or the Gradle Plugin Portal, make it the only
+repository for both plugin and dependency resolution and run Gradle offline:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        maven(url = uri("/path/to/m2-repository"))
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven(url = uri("/path/to/m2-repository"))
+    }
+}
+```
+
+```shell
+./gradlew --offline build
+```
+
+If `/m2/repository/.` is copied directly into `~/.m2/repository/`, replace each file-repository
+declaration above with `mavenLocal()`.
 
 See [Kotlin Gradle Plugin variant resolution](docs/kotlin-gradle-plugin-variant-resolution.md) for
 the recorded `ProjectIsolationStartParameterAccessorG76` investigation and the requirements for

@@ -14,15 +14,19 @@ COPY . .
 
 RUN ./gradlew --no-daemon --no-configuration-cache \
         -Pversion="${PROJECT_VERSION}" \
+        -PdependencyRepositoryOutput=/root/.m2/repository \
         :core:publishToMavenLocal \
         :example:publishToMavenLocal \
-        :example:resolveDependencyImage \
+        :example:exportDependencyRepository \
         -x test \
-    && sh docker/sync-gradle-modules.sh /root/.gradle/caches/modules-2/files-2.1 /root/.m2/repository \
     && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/core/${PROJECT_VERSION}/core-${PROJECT_VERSION}.jar" \
     && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/example/${PROJECT_VERSION}/example-${PROJECT_VERSION}.jar" \
     && test -f "/root/.m2/repository/org/jetbrains/kotlinx/dataframe/1.0.0-Beta5/dataframe-1.0.0-Beta5.module" \
-    && test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21.module"
+    && test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21.module" \
+    && for variant in gradle80 gradle81 gradle82 gradle85 gradle86 gradle88 gradle811 gradle813; do \
+         test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21-${variant}.jar"; \
+         test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.21/kotlin-gradle-plugin-api-2.3.21-${variant}.jar"; \
+       done
 
 # Maven resolves the POM after the local publications have been copied in. The
 # resulting repository contains local artifacts plus all example runtime dependencies.
@@ -48,7 +52,28 @@ RUN mvn --batch-mode --no-transfer-progress \
     && test -f "/workspace/dependencies/kandy-lets-plot-0.8.4.jar" \
     && test -f "/workspace/dependencies/kotlin-gradle-plugin-2.3.21.jar" \
     && test -f "/workspace/dependencies/gradle-kotlin-dsl-plugins-6.6.4.jar" \
+    && test -f "/root/.m2/repository/org/jetbrains/kotlin/jvm/org.jetbrains.kotlin.jvm.gradle.plugin/2.3.21/org.jetbrains.kotlin.jvm.gradle.plugin-2.3.21.pom" \
+    && test -f "/root/.m2/repository/org/jetbrains/kotlin/plugin/serialization/org.jetbrains.kotlin.plugin.serialization.gradle.plugin/2.3.21/org.jetbrains.kotlin.plugin.serialization.gradle.plugin-2.3.21.pom" \
     && test -f "/root/.m2/repository/org/gradle/kotlin/kotlin-dsl/org.gradle.kotlin.kotlin-dsl.gradle.plugin/6.6.4/org.gradle.kotlin.kotlin-dsl.gradle.plugin-6.6.4.pom"
+
+# Prove that an empty Gradle module cache can compile Kotlin code and Kotlin DSL build logic using
+# only the assembled file repository. --offline prevents accidental network fallback.
+FROM local-publisher AS offline-verifier
+
+ARG PROJECT_VERSION=0.1.0-SNAPSHOT
+ENV OFFLINE_M2_REPO=/offline-m2/repository \
+    DATAFRAMEX_VERSION=${PROJECT_VERSION}
+
+COPY --from=dependency-resolver /root/.m2/repository /offline-m2/repository
+
+RUN mkdir -p /tmp/offline-gradle \
+    && cp -R /root/.gradle/wrapper /tmp/offline-gradle/wrapper \
+    && GRADLE_USER_HOME=/tmp/offline-gradle ./gradlew \
+         --no-daemon \
+         --no-configuration-cache \
+         --offline \
+         -p docker/offline-smoke-test \
+         clean build
 
 # This is a data image. Create a stopped container and use `docker cp` to extract
 # either the canonical Maven repository or the convenient flat runtime jar directory.
@@ -60,7 +85,7 @@ LABEL org.opencontainers.image.title="Kotlin DataFrameX dependency cache" \
       org.opencontainers.image.source="https://github.com/OpenProjectX/kotlin-dataframex" \
       org.opencontainers.image.version="${PROJECT_VERSION}"
 
-COPY --from=dependency-resolver /root/.m2/repository /m2/repository
+COPY --from=offline-verifier /offline-m2/repository /m2/repository
 COPY --from=dependency-resolver /workspace/dependencies /dependencies
 
 CMD ["sh", "-c", "echo 'Copy /m2/repository or /dependencies from this image; see README.md.'"]

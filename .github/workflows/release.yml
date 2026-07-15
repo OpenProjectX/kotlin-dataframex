@@ -131,11 +131,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and publish dependency image
+      - name: Build dependency image
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          load: true
           build-args: |
             PROJECT_VERSION=${{ env.RELEASE_VERSION }}
           tags: |
@@ -147,6 +147,30 @@ jobs:
             org.opencontainers.image.version=${{ env.RELEASE_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify dependency image with Gradle offline
+        run: |
+          offline_repo="$RUNNER_TEMP/dataframex-offline-m2"
+          offline_gradle_home="$RUNNER_TEMP/dataframex-offline-gradle"
+          container_id="$(docker create "${IMAGE_NAME}:${RELEASE_VERSION}")"
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          mkdir -p "$offline_repo" "$offline_gradle_home"
+          docker cp "$container_id:/m2/repository/." "$offline_repo"
+          docker rm "$container_id"
+          trap - EXIT
+
+          GRADLE_USER_HOME="$offline_gradle_home" ./gradlew --version
+          OFFLINE_M2_REPO="$offline_repo" \
+          DATAFRAMEX_VERSION="$RELEASE_VERSION" \
+          GRADLE_USER_HOME="$offline_gradle_home" \
+            ./gradlew --no-daemon --no-configuration-cache --offline \
+              -p docker/offline-smoke-test clean build --stacktrace
+
+      - name: Publish dependency image
+        run: |
+          docker push "${IMAGE_NAME}:${RELEASE_VERSION}"
+          docker push "${IMAGE_NAME}:latest"
 
       - name: Write release summary
         run: |

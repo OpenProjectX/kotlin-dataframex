@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+        run: |
+          docker version
+          ./gradlew --no-configuration-cache test --stacktrace
+
+      - name: Read project version
+        run: |
+          project_version="$(awk -F= '/^[[:space:]]*version[[:space:]]*=/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit}' gradle.properties)"
+          test -n "$project_version"
+          echo "PROJECT_VERSION=$project_version" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dependency image and run embedded offline verification
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          build-args: |
+            PROJECT_VERSION=${{ env.PROJECT_VERSION }}
+          tags: kotlin-dataframex-dependencies:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify extracted repository with an empty Gradle cache
+        run: |
+          offline_repo="$RUNNER_TEMP/dataframex-offline-m2"
+          offline_gradle_home="$RUNNER_TEMP/dataframex-offline-gradle"
+          container_id="$(docker create kotlin-dataframex-dependencies:ci)"
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          mkdir -p "$offline_repo" "$offline_gradle_home"
+          docker cp "$container_id:/m2/repository/." "$offline_repo"
+          docker rm "$container_id"
+          trap - EXIT
+
+          GRADLE_USER_HOME="$offline_gradle_home" ./gradlew --version
+          OFFLINE_M2_REPO="$offline_repo" \
+          DATAFRAMEX_VERSION="$PROJECT_VERSION" \
+          GRADLE_USER_HOME="$offline_gradle_home" \
+            ./gradlew --no-daemon --no-configuration-cache --offline \
+              -p docker/offline-smoke-test clean build --stacktrace

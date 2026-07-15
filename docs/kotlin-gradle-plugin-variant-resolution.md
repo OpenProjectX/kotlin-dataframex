@@ -109,8 +109,13 @@ component was resolved. If `mavenLocal()` supplies the `.module` file but does n
 referenced `gradle813` JAR, Gradle should not be expected to complete that component by combining
 files from a later JFrog or Maven Central repository.
 
-The image's synchronization step must therefore copy the resolved variant JARs as well as the
+The image's repository export step must therefore copy the resolved variant JARs as well as the
 `.module` files from the Gradle cache into canonical Maven repository paths.
+
+This project implements that requirement with the `:example:exportDependencyRepository` Gradle
+task. It resolves Kotlin Gradle Plugin runtime variants for Gradle 8.0, 8.1, 8.2, 8.5, 8.6, 8.8,
+8.11, and 8.13, then exports their complete cache entries—including POMs, `.module` files, and
+classifier JARs—to the image's Maven repository.
 
 ## Consumer repository configuration
 
