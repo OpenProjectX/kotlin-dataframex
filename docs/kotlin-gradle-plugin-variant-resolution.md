@@ -1,7 +1,7 @@
 # Kotlin Gradle Plugin variant resolution in an offline Maven repository
 
-This document records the investigation of the following failure when Kotlin 2.3.20 is used
-with the Gradle 9.5.0 wrapper and dependencies are supplied by a copied Maven local repository:
+This document records the investigation of the following failure when Kotlin 2.3.21 is used
+with the Gradle 9.6.1 wrapper and dependencies are supplied by a copied Maven local repository:
 
 ```text
 java.lang.NoSuchMethodError:
@@ -18,19 +18,19 @@ implementation. It is not a Gradle Kotlin DSL generated accessor, and its presen
 that the wrapper is running Gradle 7.6. It means that dependency resolution loaded Kotlin's
 Gradle 7.6 fallback plugin JAR.
 
-For Kotlin Gradle Plugin 2.3.20, a Gradle 9.5.0 build should select the newest compatible
+For Kotlin Gradle Plugin 2.3.21, a Gradle 9.6.1 build should select the newest compatible
 published variant:
 
 ```text
-kotlin-gradle-plugin-2.3.20-gradle813.jar
-kotlin-gradle-plugin-api-2.3.20-gradle813.jar
+kotlin-gradle-plugin-2.3.21-gradle813.jar
+kotlin-gradle-plugin-api-2.3.21-gradle813.jar
 ```
 
 The `gradle813` variant uses `DefaultProjectIsolationStartParameterAccessor` and the public
 `BuildFeatures.isolatedProjects` API. The locally selected `gradle813` plugin JAR does not contain
 `ProjectIsolationStartParameterAccessorG76`.
 
-## Why the fallback fails on Gradle 9.5
+## Why the fallback fails on Gradle 9.6.1
 
 The Gradle 7.6 compatibility accessor was compiled against this internal method signature:
 
@@ -38,7 +38,7 @@ The Gradle 7.6 compatibility accessor was compiled against this internal method 
 BuildOption$Value StartParameterInternal.getIsolatedProjects()
 ```
 
-Inspection of the Gradle 9.5.0 distribution used by this project shows this signature instead:
+Inspection of the Gradle 9.6.1 distribution used by this project shows this signature instead:
 
 ```text
 Option$Value<Boolean> StartParameterInternal.getIsolatedProjects()
@@ -53,32 +53,32 @@ plugin variant is available.
 
 ## How Kotlin's Gradle variants are selected
 
-Kotlin 2.3.20 publishes several variants of the same logical plugin component, including variants
+Kotlin 2.3.21 publishes several variants of the same logical plugin component, including variants
 for Gradle 8.0, 8.1, 8.2, 8.5, 8.6, 8.8, 8.11, and 8.13. Kotlin's internal wrapper registration
 selects implementations appropriate to the variant; names such as `G76` are Kotlin's compatibility
 implementation names.
 
-Gradle Module Metadata in `kotlin-gradle-plugin-2.3.20.module` describes the variants and their
+Gradle Module Metadata in `kotlin-gradle-plugin-2.3.21.module` describes the variants and their
 artifacts. Each Gradle-specific variant declares an `org.gradle.plugin.api-version` attribute.
 Gradle uses the running Gradle version as the consumer value, considers lower plugin API versions
-compatible, and prefers the highest compatible version. Consequently, Gradle 9.5 selects the
+compatible, and prefers the highest compatible version. Consequently, Gradle 9.6.1 selects the
 Kotlin `gradle813` variant.
 
 See:
 
 - [Gradle plugin API version attribute](https://docs.gradle.org/current/userguide/variant_attributes.html#sub:gradle_plugin_api_version)
-- [Kotlin Gradle Plugin 2.3.20 artifacts](https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.20/)
-- [Kotlin Gradle Plugin API 2.3.20 artifacts](https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.20/)
+- [Kotlin Gradle Plugin 2.3.21 artifacts](https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/)
+- [Kotlin Gradle Plugin API 2.3.21 artifacts](https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.21/)
 
 When the `.module` file is missing, Gradle can fall back to Maven POM metadata. A Maven POM cannot
 represent these Gradle variants, so resolution can load the unclassified fallback artifact:
 
 ```text
-kotlin-gradle-plugin-2.3.20.jar
+kotlin-gradle-plugin-2.3.21.jar
 ```
 
 That fallback contains the Gradle 7.6 compatibility implementation and produces the observed
-`G76` stack trace on Gradle 9.5.
+`G76` stack trace on Gradle 9.6.1.
 
 ## Requirements for a copied Maven repository
 
@@ -88,17 +88,17 @@ insufficient: every artifact referenced by those files must exist in the same re
 At minimum, the Kotlin plugin entries used by this build must include:
 
 ```text
-org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.20/
-├── kotlin-gradle-plugin-2.3.20.module
-├── kotlin-gradle-plugin-2.3.20.pom
-├── kotlin-gradle-plugin-2.3.20.jar
-└── kotlin-gradle-plugin-2.3.20-gradle813.jar
+org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/
+├── kotlin-gradle-plugin-2.3.21.module
+├── kotlin-gradle-plugin-2.3.21.pom
+├── kotlin-gradle-plugin-2.3.21.jar
+└── kotlin-gradle-plugin-2.3.21-gradle813.jar
 
-org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.20/
-├── kotlin-gradle-plugin-api-2.3.20.module
-├── kotlin-gradle-plugin-api-2.3.20.pom
-├── kotlin-gradle-plugin-api-2.3.20.jar
-└── kotlin-gradle-plugin-api-2.3.20-gradle813.jar
+org/jetbrains/kotlin/kotlin-gradle-plugin-api/2.3.21/
+├── kotlin-gradle-plugin-api-2.3.21.module
+├── kotlin-gradle-plugin-api-2.3.21.pom
+├── kotlin-gradle-plugin-api-2.3.21.jar
+└── kotlin-gradle-plugin-api-2.3.21-gradle813.jar
 ```
 
 Source JARs and checksums may also be copied, but they are not required to execute the plugin.
@@ -144,8 +144,8 @@ First inspect the copied repository:
 ```shell
 repo="$HOME/.m2/repository/org/jetbrains/kotlin"
 
-find "$repo/kotlin-gradle-plugin/2.3.20" -maxdepth 1 -type f -printf '%f\n' | sort
-find "$repo/kotlin-gradle-plugin-api/2.3.20" -maxdepth 1 -type f -printf '%f\n' | sort
+find "$repo/kotlin-gradle-plugin/2.3.21" -maxdepth 1 -type f -printf '%f\n' | sort
+find "$repo/kotlin-gradle-plugin-api/2.3.21" -maxdepth 1 -type f -printf '%f\n' | sort
 ```
 
 Both `.module` files and both `gradle813` JARs should be present. Then stop daemons that may already

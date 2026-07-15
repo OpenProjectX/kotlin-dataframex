@@ -22,7 +22,7 @@ val dependencyImage by configurations.creating {
         attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
         attribute(
             GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE,
-            objects.named("9.5.0"),
+            objects.named("9.6.1"),
         )
     }
 }
