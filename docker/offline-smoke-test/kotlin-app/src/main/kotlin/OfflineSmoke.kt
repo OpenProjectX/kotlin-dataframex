@@ -1,5 +1,3 @@
-import org.openprojectx.dataframex.crux.CruxConsoleClient
-
 fun main() {
-    println(CruxConsoleClient::class.qualifiedName)
+    println("Offline Kotlin compilation succeeded")
 }

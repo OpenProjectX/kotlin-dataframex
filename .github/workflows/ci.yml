@@ -58,21 +58,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify extracted repository with an empty Gradle cache
-        run: |
-          offline_repo="$RUNNER_TEMP/dataframex-offline-m2"
-          offline_gradle_home="$RUNNER_TEMP/dataframex-offline-gradle"
-          container_id="$(docker create kotlin-dataframex-dependencies:ci)"
-          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
-
-          mkdir -p "$offline_repo" "$offline_gradle_home"
-          docker cp "$container_id:/m2/repository/." "$offline_repo"
-          docker rm "$container_id"
-          trap - EXIT
-
-          GRADLE_USER_HOME="$offline_gradle_home" ./gradlew --version
-          OFFLINE_M2_REPO="$offline_repo" \
-          DATAFRAMEX_VERSION="$PROJECT_VERSION" \
-          GRADLE_USER_HOME="$offline_gradle_home" \
-            ./gradlew --no-daemon --no-configuration-cache --offline \
-              -p docker/offline-smoke-test clean build --stacktrace
+      - name: Run published example from the image repository offline
+        run: docker/verify-dependency-image.sh kotlin-dataframex-dependencies:ci "$PROJECT_VERSION"

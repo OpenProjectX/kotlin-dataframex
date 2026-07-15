@@ -19,15 +19,8 @@ val frame = DataFrame.readCrux(
 )
 ```
 
-The extension parses the EDN query structurally and uses the forms in `:find` as column names.
-It supports bare or `{:query ...}`-wrapped map queries, vector queries, comments, aggregate
-expressions, nested EDN values, keywords, UUIDs, and instants. Duplicate derived names receive
-numeric suffixes.
-
-For dependency injection or repeated queries, create a `CruxConsoleClient`. Its
-`CruxQueryTransport`, `ColumnNameResolver`, and `CruxResultDecoder` collaborators are public
-extension points so another HTTP API or response format can be added without changing the
-DataFrame mapping.
+Column names are derived structurally from the query's `:find` clause. `CruxConsoleClient` exposes
+replaceable transport, column-resolution, and result-decoding collaborators for future APIs.
 
 ## Tests
 
@@ -35,10 +28,8 @@ DataFrame mapping.
 ./gradlew test
 ```
 
-`CruxConsoleE2ETest` uses Testcontainers with
-`ghcr.io/openprojectx/crux-console:latest`, seeds its embedded Crux node, calls
-`/console/api/query`, and verifies the resulting DataFrame. It is skipped automatically when
-Docker is unavailable.
+The end-to-end test uses `ghcr.io/openprojectx/crux-console:latest` and is skipped when Docker is
+unavailable.
 
 ## Standalone example
 
@@ -48,80 +39,10 @@ Start Crux Console and seed documents with `:ticker/name` and `:ticker/price`, t
 ./gradlew :example:run --args="http://localhost:5000/console/api/query build/crux-example"
 ```
 
-The example reads a DataFrame from Crux, filters and adds a calculated column, writes CSV and
-HTML, and exports a Kandy bar chart as standalone HTML.
+It reads and transforms Crux data, then writes CSV, HTML, and a Kandy visualization.
 
 ## Dependency image
 
-The release workflow publishes `ghcr.io/openprojectx/kotlin-dataframex:<version>`. This is a
-data image containing both locally published project artifacts and all runtime dependencies of
-the example. It also contains `org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21`, matching this
-project's version catalog, together with the plugin's transitive compiler and tooling dependencies.
-The Gradle `kotlin-dsl` marker and `org.gradle.kotlin:gradle-kotlin-dsl-plugins:6.6.4` are included
-with their transitive dependencies; `6.6.4` is the version embedded by this project's Gradle
-9.6.1 wrapper:
-
-- `/m2/repository` — a canonical Maven local repository with jars, POMs, Maven metadata, Gradle
-  `.module` metadata, and every resolved Kotlin Gradle Plugin compatibility JAR.
-- `/dependencies` — a flat directory of runtime jars for simple classpath use.
-
-Extract either directory without running the image:
-
-```shell
-image=ghcr.io/openprojectx/kotlin-dataframex:latest
-container=$(docker create "$image")
-docker cp "$container:/m2/repository" ./m2-repository
-docker cp "$container:/dependencies" ./dependencies
-docker rm "$container"
-```
-
-To build it locally for the current snapshot version:
-
-```shell
-version=$(awk -F= '/^version/{gsub(/[[:space:]]/, "", $2); print $2}' gradle.properties)
-docker build \
-  --build-arg PROJECT_VERSION="$version" \
-  -t kotlin-dataframex-dependencies .
-```
-
-The root `pom.xml` is the dependency manifest used by the image. Override its
-`dataframex.version` property when resolving a different local publication:
-
-```shell
-./gradlew publishToMavenLocal -x test
-mvn -Ddataframex.version=0.1.0-SNAPSHOT dependency:go-offline
-```
-
-The image uses the `:example:exportDependencyRepository` Gradle task to resolve the runtime graph,
-all Kotlin Gradle Plugin variants published for Gradle 8.0 through 8.13, and the Kotlin DSL plugin.
-The task exports the complete resolved Gradle cache entries into Maven layout, including classifier
-JARs referenced by `.module` metadata.
-
-To use the extracted repository without Maven Central or the Gradle Plugin Portal, make it the only
-repository for both plugin and dependency resolution and run Gradle offline:
-
-```kotlin
-// settings.gradle.kts
-pluginManagement {
-    repositories {
-        maven(url = uri("/path/to/m2-repository"))
-    }
-}
-
-dependencyResolutionManagement {
-    repositories {
-        maven(url = uri("/path/to/m2-repository"))
-    }
-}
-```
-
-```shell
-./gradlew --offline build
-```
-
-If `/m2/repository/.` is copied directly into `~/.m2/repository/`, replace each file-repository
-declaration above with `mavenLocal()`.
-
-See [Kotlin Gradle Plugin variant resolution](docs/kotlin-gradle-plugin-variant-resolution.md) for
-the recorded `ProjectIsolationStartParameterAccessorG76` investigation and the requirements for
-using the copied repository with Gradle 9.6.1.
+`ghcr.io/openprojectx/kotlin-dataframex:<version>` contains the project artifacts, the example's
+complete runtime dependency graph by default, and the Gradle/Kotlin tooling needed for offline
+builds. See the [dependency image guide](docs/dependency-image.md).
