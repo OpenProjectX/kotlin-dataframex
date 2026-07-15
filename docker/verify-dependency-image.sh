@@ -32,6 +32,10 @@ docker cp "$data_container:/m2/repository/." "$offline_repo"
 docker rm "$data_container" >/dev/null
 data_container=
 
+# KotlinPoet is multiplatform metadata whose JVM variant redirects to kotlinpoet-jvm. The root
+# artifact must still be present so the repository is complete before variant redirection.
+test -s "$offline_repo/com/squareup/kotlinpoet/2.3.0/kotlinpoet-2.3.0.jar"
+
 console_container=$(docker run --detach \
     --publish 127.0.0.1::5000 \
     --publish 127.0.0.1::8080 \
