@@ -16,9 +16,13 @@ RUN ./gradlew --no-daemon --no-configuration-cache \
         -Pversion="${PROJECT_VERSION}" \
         :core:publishToMavenLocal \
         :example:publishToMavenLocal \
+        :example:resolveDependencyImage \
         -x test \
+    && sh docker/sync-gradle-modules.sh /root/.gradle/caches/modules-2/files-2.1 /root/.m2/repository \
     && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/core/${PROJECT_VERSION}/core-${PROJECT_VERSION}.jar" \
-    && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/example/${PROJECT_VERSION}/example-${PROJECT_VERSION}.jar"
+    && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/example/${PROJECT_VERSION}/example-${PROJECT_VERSION}.jar" \
+    && test -f "/root/.m2/repository/org/jetbrains/kotlinx/dataframe/1.0.0-Beta5/dataframe-1.0.0-Beta5.module" \
+    && test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.20/kotlin-gradle-plugin-2.3.20.module"
 
 # Maven resolves the POM after the local publications have been copied in. The
 # resulting repository contains local artifacts plus all example runtime dependencies.

@@ -61,7 +61,8 @@ The Gradle `kotlin-dsl` marker and `org.gradle.kotlin:gradle-kotlin-dsl-plugins:
 with their transitive dependencies; `6.5.7` is the version embedded by this project's Gradle
 9.5.0 wrapper:
 
-- `/m2/repository` — a canonical Maven local repository with jars, POMs, and metadata.
+- `/m2/repository` — a canonical Maven local repository with jars, POMs, Maven metadata, and
+  Gradle `.module` metadata synchronized from the resolved Gradle cache.
 - `/dependencies` — a flat directory of runtime jars for simple classpath use.
 
 Extract either directory without running the image:
@@ -90,3 +91,7 @@ The root `pom.xml` is the dependency manifest used by the image. Override its
 ./gradlew publishToMavenLocal -x test
 mvn -Ddataframex.version=0.1.0-SNAPSHOT dependency:go-offline
 ```
+
+See [Kotlin Gradle Plugin variant resolution](docs/kotlin-gradle-plugin-variant-resolution.md) for
+the recorded `ProjectIsolationStartParameterAccessorG76` investigation and the requirements for
+using the copied repository with Gradle 9.5.
