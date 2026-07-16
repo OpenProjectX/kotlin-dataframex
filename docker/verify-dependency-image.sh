@@ -33,8 +33,9 @@ docker rm "$data_container" >/dev/null
 data_container=
 
 # KotlinPoet is multiplatform metadata whose JVM variant redirects to kotlinpoet-jvm. The root
-# artifact must still be present so the repository is complete before variant redirection.
+# artifact and its sources must still be present before variant redirection.
 test -s "$offline_repo/com/squareup/kotlinpoet/2.3.0/kotlinpoet-2.3.0.jar"
+test -s "$offline_repo/com/squareup/kotlinpoet/2.3.0/kotlinpoet-2.3.0-sources.jar"
 
 console_container=$(docker run --detach \
     --publish 127.0.0.1::5000 \

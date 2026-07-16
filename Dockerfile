@@ -23,6 +23,7 @@ RUN ./gradlew --no-daemon --no-configuration-cache \
     && test -f "/root/.m2/repository/org/openprojectx/kotlin/dataframex/example/${PROJECT_VERSION}/example-${PROJECT_VERSION}.jar" \
     && test -f "/root/.m2/repository/org/jetbrains/kotlinx/dataframe/1.0.0-Beta5/dataframe-1.0.0-Beta5.module" \
     && test -s "/root/.m2/repository/com/squareup/kotlinpoet/2.3.0/kotlinpoet-2.3.0.jar" \
+    && test -s "/root/.m2/repository/com/squareup/kotlinpoet/2.3.0/kotlinpoet-2.3.0-sources.jar" \
     && test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21.module" \
     && for variant in gradle80 gradle81 gradle82 gradle85 gradle86 gradle88 gradle811 gradle813; do \
          test -f "/root/.m2/repository/org/jetbrains/kotlin/kotlin-gradle-plugin/2.3.21/kotlin-gradle-plugin-2.3.21-${variant}.jar"; \

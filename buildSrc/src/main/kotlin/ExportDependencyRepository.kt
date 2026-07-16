@@ -141,7 +141,9 @@ abstract class ExportDependencyRepository : DefaultTask() {
             variants.forEach { rawVariant ->
                 val variant = rawVariant as? Map<*, *> ?: return@forEach
                 val attributes = variant["attributes"] as? Map<*, *>
-                if (attributes?.get("org.gradle.category") == "documentation") return@forEach
+                val isDocumentation = attributes?.get("org.gradle.category") == "documentation"
+                val isSources = attributes?.get("org.gradle.docstype") == "sources"
+                if (isDocumentation && !isSources) return@forEach
                 val files = variant["files"] as? List<*> ?: emptyList<Any>()
                 files.forEach { rawFile ->
                     val file = rawFile as? Map<*, *> ?: return@forEach

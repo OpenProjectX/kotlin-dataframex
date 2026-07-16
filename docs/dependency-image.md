@@ -86,10 +86,10 @@ The `:example:exportDependencyRepository` Gradle task resolves the example runti
 plugin compatibility variants, then exports complete Gradle cache entries into Maven layout. Maven
 finishes the standard POM graph and creates `/dependencies`.
 
-The export task also reads every exported Gradle `.module` file and downloads all non-documentation
+The export task also reads every exported Gradle `.module` file and downloads all library and source
 artifacts declared directly by its variants. This includes root/common artifacts such as
-`kotlinpoet-2.3.0.jar` even when normal JVM resolution follows an `available-at` redirect to
-`kotlinpoet-jvm`.
+`kotlinpoet-2.3.0.jar` and `kotlinpoet-2.3.0-sources.jar` even when normal JVM resolution follows an
+`available-at` redirect to `kotlinpoet-jvm`.
 
 ## Offline verification
 
@@ -104,7 +104,7 @@ CI performs a stronger runtime check with `docker/verify-dependency-image.sh`:
 4. Run the real example with Gradle `--offline`.
 5. Verify non-empty CSV, HTML table, and Kandy visualization outputs.
 
-This makes a missing example runtime JAR or a missing pre-redirect artifact fail CI before the
+This makes a missing example runtime JAR, source JAR, or pre-redirect artifact fail CI before the
 dependency image is published.
 
 See [Kotlin Gradle Plugin variant resolution](kotlin-gradle-plugin-variant-resolution.md) for the
