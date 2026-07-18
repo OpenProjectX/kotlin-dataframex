@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DEPENDENCY_BUNDLE_IMAGE: ghcr.io/openprojectx/gradle-dependency-bundle:0.1.1
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,6 +33,13 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Bootstrap dependency bundle plugin
+        run: |
+          mkdir -p "$HOME/.m2/repository"
+          container=$(docker create "$DEPENDENCY_BUNDLE_IMAGE")
+          docker cp "$container:/m2/repository/." "$HOME/.m2/repository"
+          docker rm "$container"
 
       - name: Run tests
         env:
@@ -54,6 +64,8 @@ jobs:
           load: true
           build-args: |
             PROJECT_VERSION=${{ env.PROJECT_VERSION }}
+            DEPENDENCY_BUNDLE_IMAGE=${{ env.DEPENDENCY_BUNDLE_IMAGE }}
+            USE_MIRRORS=false
           tags: kotlin-dataframex-dependencies:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max

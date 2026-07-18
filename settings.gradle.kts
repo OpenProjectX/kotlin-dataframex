@@ -1,15 +1,34 @@
 import java.io.File
 
 pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "org.openprojectx.gradle.dependency.bundle") {
+                useVersion(providers.gradleProperty("dependencyBundlePluginVersion").get())
+            }
+        }
+    }
+
     repositories {
         val isCi = System.getenv().containsKey("CI") ||
                 System.getenv().containsKey("GITHUB_ACTIONS") ||
                 System.getenv().containsKey("JENKINS_HOME")
+        val useMirrors = System.getenv("USE_MIRRORS")?.toBooleanStrictOrNull() == true
 
-        if (!isCi) {
+        // Prefer the plugin bundle copied from the bootstrap image. This also avoids needless
+        // remote lookups for the snapshot marker during local development.
+        mavenLocal()
+
+        if (!isCi || useMirrors) {
             maven(url = "https://mirrors.tencent.com/nexus/repository/maven-public/")
             maven(url = "https://maven.aliyun.com/repository/gradle-plugin")
         }
+
+        // The dependency-bundle plugin is bootstrapped from its OCI image into Maven local in
+        // CI/Docker. Released versions can be resolved from the configured remote repositories.
+        System.getenv("DEPENDENCY_BUNDLE_PLUGIN_REPOSITORY")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { maven(url = it) }
 
         // Plugin implementation artifacts are commonly published to Maven Central even when
         // their marker POM is hosted by the Plugin Portal.
@@ -24,8 +43,9 @@ dependencyResolutionManagement {
         val isCi = System.getenv().containsKey("CI") ||
                 System.getenv().containsKey("GITHUB_ACTIONS") ||
                 System.getenv().containsKey("JENKINS_HOME")
+        val useMirrors = System.getenv("USE_MIRRORS")?.toBooleanStrictOrNull() == true
 
-        if (!isCi) {
+        if (!isCi || useMirrors) {
             maven(url = "https://mirrors.tencent.com/nexus/repository/maven-public/")
             maven(url = "https://maven.aliyun.com/repository/public/")
         }

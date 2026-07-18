@@ -3,9 +3,34 @@ import net.researchgate.release.ReleaseExtension
 plugins {
     `maven-publish`
     signing
+    id("org.openprojectx.gradle.dependency.bundle")
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0" // nexus publish/close/release
     id("net.researchgate.release") version "3.1.0"
 
+}
+
+val dependencyBundleOutput = layout.dir(
+    providers.gradleProperty("dependencyBundleOutput").map { file(it) },
+).orElse(layout.buildDirectory.dir("dependency-bundle"))
+
+dependencyBundle {
+    configurations.addAll("runtimeClasspath", "testRuntimeClasspath")
+    includeBuildDependencies.set(true)
+    includeSources.set(true)
+    outputDirectory.set(dependencyBundleOutput)
+    module("org.gradle.kotlin:gradle-kotlin-dsl-plugins:${libs.versions.kotlinDsl.get()}")
+    module(
+        "org.gradle.kotlin.kotlin-dsl:org.gradle.kotlin.kotlin-dsl.gradle.plugin:" +
+                libs.versions.kotlinDsl.get(),
+    )
+    module(
+        "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:" +
+                libs.versions.kotlin.get(),
+    )
+    gradleApiVariants(
+        "org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}",
+        listOf("8.0", "8.1", "8.2", "8.5", "8.6", "8.8", "8.11", "8.13"),
+    )
 }
 
 allprojects {
@@ -36,6 +61,12 @@ subprojects {
 
 
         extensions.configure<PublishingExtension>("publishing") {
+            repositories {
+                maven {
+                    name = "dependencyBundle"
+                    url = dependencyBundleOutput.get().dir("m2/repository").asFile.toURI()
+                }
+            }
             publications {
                 // Create once per project
                 if (findByName("mavenJava") == null) {
@@ -94,6 +125,40 @@ subprojects {
             }
         }
     }
+}
+
+val publishDependencyBundleArtifacts = tasks.register("publishDependencyBundleArtifacts") {
+    group = "dependency bundle"
+    description = "Publishes DataFrameX modules into the portable dependency repository."
+}
+
+gradle.projectsEvaluated {
+    publishDependencyBundleArtifacts.configure {
+        dependsOn(subprojects.flatMap { subproject ->
+            subproject.tasks.matching {
+                it.name.startsWith("publish") && it.name.endsWith("ToDependencyBundleRepository")
+            }.toList()
+        })
+    }
+    tasks.named("exportDependencyBundle") {
+        dependsOn(publishDependencyBundleArtifacts)
+    }
+}
+
+val stageDependencyBundleRuntime = tasks.register<Sync>("stageDependencyBundleRuntime") {
+    group = "dependency bundle"
+    description = "Stages the example runtime classpath as a convenient flat JAR directory."
+    val exampleProject = project(":example")
+    dependsOn(exampleProject.tasks.named("jar"))
+    from(exampleProject.configurations.named("runtimeClasspath"))
+    from(exampleProject.tasks.named("jar"))
+    into(dependencyBundleOutput.map { it.dir("dependencies") })
+}
+
+tasks.register("prepareDependencyBundle") {
+    group = "dependency bundle"
+    description = "Creates the Maven repository, graph reports, and flat example runtime JARs."
+    dependsOn("dependencyBundleReport", stageDependencyBundleRuntime)
 }
 
 

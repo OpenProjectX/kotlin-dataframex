@@ -1,112 +1,90 @@
-# Dependency image
+# Dependency bundle image
 
-The release workflow publishes:
+Releases publish `ghcr.io/openprojectx/kotlin-dataframex:<version>`. The image is a portable data
+bundle for environments without Maven Central or the Gradle Plugin Portal:
 
-```text
-ghcr.io/openprojectx/kotlin-dataframex:<version>
+- `/m2/repository` contains project publications, runtime and build dependencies, POMs, Gradle
+  `.module` metadata, source JARs, plugin markers, and Kotlin Gradle Plugin classifier JARs.
+- `/dependencies` contains the example's runtime JARs as a flat classpath.
+- `/dependency-bundle/dependency-graph.json` preserves the resolved graph, variants, edges, reasons,
+  checksums, and artifact paths.
+- `/dependency-bundle/dependency-graph.txt` is a human-readable dependencies-style report.
+
+The `org.openprojectx.gradle.dependency.bundle` plugin owns graph capture and Maven-layout export.
+This project only declares what it needs: all `runtimeClasspath` and `testRuntimeClasspath`
+configurations, buildscript dependencies, sources, Kotlin DSL 6.6.4, and Kotlin Gradle Plugin 2.3.21
+variants for Gradle 8.0 through 8.13. Adding an example runtime dependency automatically includes
+its transitive graph.
+
+## Build and inspect
+
+The plugin is bootstrapped from its own image, so the DataFrameX Docker build does not first need a
+plugin portal:
+
+```shell
+version=$(awk -F= '/^version/{gsub(/[[:space:]]/, "", $2); print $2}' gradle.properties)
+docker build --build-arg PROJECT_VERSION="$version" -t kotlin-dataframex-dependencies .
 ```
 
-This is a data image for building and running DataFrameX without Maven Central or the Gradle Plugin
-Portal. It contains:
+Local Docker builds use the configured Tencent and Aliyun Maven mirrors. Pass
+`--build-arg USE_MIRRORS=false` to match CI, which resolves directly from the standard upstream
+repositories.
 
-- `/m2/repository`: a Maven-layout repository with project artifacts, JARs, POMs, Gradle `.module`
-  metadata, plugin markers, and Kotlin Gradle Plugin classifier JARs.
-- `/dependencies`: a flat directory of runtime JARs for simple classpath use.
+To produce the same bundle directly with Gradle:
 
-## Included dependencies
+```shell
+./gradlew prepareDependencyBundle
+```
 
-The complete `example.runtimeClasspath` is included by default. Adding a runtime dependency to the
-example automatically adds it and its transitive runtime graph to the image; it does not need to be
-duplicated in the image configuration.
+The default output is `build/dependency-bundle`. Override it with
+`-PdependencyBundleOutput=/some/path`.
 
-The image additionally includes:
-
-- locally published `core` and `example` artifacts;
-- Kotlin Gradle Plugin 2.3.21 and its compiler/tooling dependencies;
-- matching `kotlin-gradle-plugin` and `kotlin-gradle-plugin-api` runtime classifiers for Gradle
-  8.0, 8.1, 8.2, 8.5, 8.6, 8.8, 8.11, and 8.13;
-- Kotlin DSL 6.6.4 and its transitive dependencies;
-- Kotlin JVM, serialization, Kotlin DSL, Nexus publishing, and release plugin markers and
-  implementations used by this build.
-
-Some coordinates legitimately contain only a POM or Gradle metadata—for example plugin markers,
-BOMs, and parent POMs. Runtime library coordinates must provide their referenced JARs. The offline
-runtime test described below detects missing example runtime JARs.
-
-## Extract the repository
+## Use in a restricted environment
 
 ```shell
 image=ghcr.io/openprojectx/kotlin-dataframex:latest
 container=$(docker create "$image")
-docker cp "$container:/m2/repository" ./m2-repository
-docker cp "$container:/dependencies" ./dependencies
+mkdir -p "$HOME/.m2/repository"
+docker cp "$container:/m2/repository/." "$HOME/.m2/repository"
 docker rm "$container"
 ```
 
-If the contents of `/m2/repository` are copied into `~/.m2/repository`, configure `mavenLocal()` as
-the only repository for both plugins and dependencies:
+Configure the copied repository for both plugin and ordinary dependency resolution:
 
 ```kotlin
 // settings.gradle.kts
-pluginManagement {
-    repositories {
-        mavenLocal()
-    }
-}
-
-dependencyResolutionManagement {
-    repositories {
-        mavenLocal()
-    }
-}
+pluginManagement.repositories { mavenLocal() }
+dependencyResolutionManagement.repositories { mavenLocal() }
 ```
 
-For another extraction location, use a file repository instead:
-
-```kotlin
-maven(url = uri("/path/to/m2-repository"))
-```
-
-Then build without remote fallback:
+An independent `buildSrc` or included build needs the same repository configuration. Then verify
+that no remote fallback is possible:
 
 ```shell
 ./gradlew --offline build
 ```
 
-## Build locally
+For JFrog gap analysis, keep the serialized graph and run the plugin's audit in the restricted
+environment:
 
 ```shell
-version=$(awk -F= '/^version/{gsub(/[[:space:]]/, "", $2); print $2}' gradle.properties)
-docker build \
-  --build-arg PROJECT_VERSION="$version" \
-  -t kotlin-dataframex-dependencies .
+./gradlew auditArtifactRepository \
+  -PartifactRepositoryUrl=https://jfrog.example/artifactory/maven-virtual
 ```
 
-The `:example:exportDependencyRepository` Gradle task resolves the example runtime graph and Kotlin
-plugin compatibility variants, then exports complete Gradle cache entries into Maven layout. Maven
-finishes the standard POM graph and creates `/dependencies`.
+Set `JFROG_USERNAME` and `JFROG_PASSWORD` when authentication is required. The report is written to
+`build/reports/dependency-audit` and retains graph context, rather than producing only a flat list.
 
-The export task also reads every exported Gradle `.module` file and downloads all library and source
-artifacts declared directly by its variants. This includes root/common artifacts such as
-`kotlinpoet-2.3.0.jar` and `kotlinpoet-2.3.0-sources.jar` even when normal JVM resolution follows an
-`available-at` redirect to `kotlinpoet-jvm`.
+## Verification
 
-## Offline verification
+The Docker build compiles a Kotlin DSL smoke project with an empty Gradle module cache, the bundled
+Maven repository as its only repository, and `--offline`. CI additionally runs
+`docker/verify-dependency-image.sh`, which starts Crux Console, resolves the published independent
+example from the image, runs it, and checks its CSV, HTML, and Kandy outputs.
 
-The Docker build first compiles an isolated Kotlin application and Kotlin DSL build using an empty
-Gradle module cache, the image repository as the only repository, and `--offline`.
-
-CI performs a stronger runtime check with `docker/verify-dependency-image.sh`:
-
-1. Extract `/m2/repository` from the built image.
-2. Start `ghcr.io/openprojectx/crux-console:latest` and seed ticker documents.
-3. Resolve the published `example` and its full runtime graph from only the extracted repository.
-4. Run the real example with Gradle `--offline`.
-5. Verify non-empty CSV, HTML table, and Kandy visualization outputs.
-
-This makes a missing example runtime JAR, source JAR, or pre-redirect artifact fail CI before the
-dependency image is published.
+Some coordinates correctly contain only metadata, such as BOMs, parent POMs, and plugin markers.
+Runtime coordinates and artifacts referenced by `.module` files must contain their JARs. CI checks
+the pre-redirect KotlinPoet JAR and sources explicitly and fails on missing runtime artifacts.
 
 See [Kotlin Gradle Plugin variant resolution](kotlin-gradle-plugin-variant-resolution.md) for the
-`ProjectIsolationStartParameterAccessorG76` investigation and why both `.module` metadata and its
-referenced classifier JARs are required.
+`ProjectIsolationStartParameterAccessorG76` investigation.

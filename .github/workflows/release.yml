@@ -38,6 +38,7 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/openprojectx/kotlin-dataframex
+  DEPENDENCY_BUNDLE_IMAGE: ghcr.io/openprojectx/gradle-dependency-bundle:0.1.1
 
 jobs:
   release:
@@ -78,6 +79,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+
+      - name: Bootstrap dependency bundle plugin
+        run: |
+          mkdir -p "$HOME/.m2/repository"
+          container=$(docker create "$DEPENDENCY_BUNDLE_IMAGE")
+          docker cp "$container:/m2/repository/." "$HOME/.m2/repository"
+          docker rm "$container"
 
       - name: Configure git
         run: |
@@ -138,6 +146,8 @@ jobs:
           load: true
           build-args: |
             PROJECT_VERSION=${{ env.RELEASE_VERSION }}
+            DEPENDENCY_BUNDLE_IMAGE=${{ env.DEPENDENCY_BUNDLE_IMAGE }}
+            USE_MIRRORS=false
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
             ${{ env.IMAGE_NAME }}:latest
